@@ -11,8 +11,7 @@
             "compilerPath": "/usr/bin/clang-14",
             "cStandard": "c11",
             "cppStandard": "c++17",
-            "intelliSenseMode": "linux-clang-x64",
-            "configurationProvider": "ms-vscode.makefile-tools"
+            "intelliSenseMode": "linux-clang-x64"
         }
     ],
     "version": 4

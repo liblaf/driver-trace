@@ -15,8 +15,8 @@ all: before_build $(PROGS)
 before_build:
 	mkdir --parents $(BIN_PATH)
 
-driver-trace-inserter: main.cc utils.cc
-	$(CXX) $(CXXFLAGS) $< -o $(BIN_PATH)/$@ $(LDFLAGS)
+driver-trace-inserter: main.cc utils.cc instrument.cc
+	$(CXX) $(CXXFLAGS) $^ -o $(BIN_PATH)/$@ $(LDFLAGS)
 
 .NOTPARALLEL: clean
 

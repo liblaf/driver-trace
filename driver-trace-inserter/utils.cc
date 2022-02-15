@@ -13,8 +13,8 @@ std::string Join(const std::string& str,
   return res;
 }
 
-int Execute(const std::vector<std::string> argv, bool shell) {
-  auto command = Join(" ", argv);
+int Execute(const std::vector<std::string>& argv, bool shell) {
+  std::string command = Join(" ", argv);
   llvm::dbgs() << command << "\n";
   if (shell == false) {
     llvm::dbgs() << std::string(80, '=') << "\n";
