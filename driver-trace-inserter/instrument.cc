@@ -77,7 +77,7 @@ void RunOnInstruction(llvm::Instruction& inst) {
   FunctionCallee passing_callee = InsertPassingDeclaration(mod);
   CallInst* call_passing = builder.CreateCall(
       passing_callee, {func_name, caller_name, num_of_params});
-  call_passing->insertAfter(&inst);
+  // call_passing->insertAfter(&inst);
 }
 
 llvm::FunctionCallee InsertOnInitDeclaration(llvm::Module& module) {
