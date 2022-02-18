@@ -5,9 +5,10 @@
 #include <string>
 #include <vector>
 
-std::string Join(const std::string& str,
-                 const std::vector<std::string>& string_list);
-int Execute(const std::vector<std::string>& argv, bool shell = true);
+#include "llvm/Support/raw_ostream.h"
+
+llvm::raw_ostream& logging();
+int Execute(const std::vector<std::string>& argv, bool use_vfork = true);
 bool IsSourceFile(const std::filesystem::path& path);
 bool IsIRFile(const std::filesystem::path& path);
 

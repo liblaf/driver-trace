@@ -3,33 +3,39 @@
 #include <unistd.h>
 
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 
-std::string Join(const std::string& str,
-                 const std::vector<std::string>& string_list) {
-  if (string_list.empty()) return "";
-  std::string res = string_list.front();
-  for (int i = 1; i < string_list.size(); ++i) res += str + string_list[i];
-  return res;
+llvm::raw_ostream& logging() {
+  char* log_path = getenv("DRIVER_TRACE_LOG_PATH");
+  if (!log_path) log_path = "/tmp/driver-trace-inserter.log";
+  std::error_code ec;
+  static auto log_stream =
+      llvm::raw_fd_ostream(log_path, ec, llvm::sys::fs::OF_Append);
+  return log_stream;
 }
 
-int Execute(const std::vector<std::string>& argv, bool shell) {
-  std::string command = Join(" ", argv);
-  llvm::dbgs() << command << "\n";
-  if (shell == false) {
-    llvm::dbgs() << std::string(80, '=') << "\n";
-    llvm::dbgs() << "\n";
+int Execute(const std::vector<std::string>& args, bool use_vfork) {
+  for (auto&& arg : args) logging() << arg << " ";
+  logging() << "\n";
+  sync();
+  int return_value = 0;
+  if (use_vfork) {
+    std::string command;
+    for (auto&& arg : args) command += arg + " ";
+    return_value = system(command.c_str());
+  } else {
+    char** argv = new char*[args.size() + 1];
+    for (int i = 0; i < args.size(); ++i)
+      argv[i] = const_cast<char*>(args[i].c_str());
+    argv[args.size()] = NULL;
+    logging() << std::string(80, '=') << "\n";
+    logging().flush();
+    return_value = execvp(argv[0], argv);
+    delete[] argv;
   }
-  llvm::dbgs().flush();
-  if (shell) return system(command.c_str());
-  char** new_argv = new char*[argv.size() + 1];
-  for (int i = 0; i < argv.size(); ++i) {
-    new_argv[i] = new char[argv[i].length() + 1];
-    strcpy(new_argv[i], argv[i].c_str());
-  }
-  new_argv[argv.size()] = nullptr;
-  int ret = execvp(new_argv[0], new_argv);
-  exit(ret);
+  sync();
+  return return_value;
 }
 
 bool IsSourceFile(const std::filesystem::path& path) {

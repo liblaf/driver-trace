@@ -1,7 +1,10 @@
 #include "driver-trace-recorder.h"
 
-#include "linux/fcntl.h"  // open()
+#include "linux/bottom_half.h"  // local_bh_disable()
+#include "linux/fcntl.h"        // open()
+#include "linux/irqflags.h"     // local_irq_disable()
 #include "linux/module.h"
+#include "linux/mutex.h"   // struct mutex
 #include "linux/sched.h"   // current
 #include "linux/slab.h"    // kmalloc(), kfree()
 #include "linux/string.h"  // memcpy()
@@ -14,6 +17,7 @@ static struct __DriverTraceList __driver_trace_buffer_queue;
 static struct workqueue_struct* __driver_trace_log_workqueue;
 //  int __driver_trace_log_file_descriptor = -1;
 static DECLARE_WORK(__driver_trace_log_work, __DriverTraceLogToFile);
+static DEFINE_MUTEX(__driver_trace_mutex);
 
 // Driver Trace List
 
@@ -91,7 +95,7 @@ void __DriverTraceWriteToBuffer(const void* s, const int count) {
   }
 }
 
-static void __DriverTraceLogFile(struct work_struct* work) {
+static void __DriverTraceLogToFile(struct work_struct* work) {
   struct __DriverTraceListNode* front =
       __DriverTraceListFront(&__driver_trace_buffer_queue);
   void* data = front->data;
@@ -113,6 +117,9 @@ EXPORT_SYMBOL(__DriverTraceOnCleanup);
 void __DriverTracePassing(const char* function_name,
                           const char* function_caller_name, int num_of_params,
                           ...) {
+  local_irq_disable();  // disable IRQ
+  local_bh_disable();   // disable soft IRQ
+  mutex_lock(&__driver_trace_mutex);
   va_list args;
   va_start(args, num_of_params);
   int i;
@@ -120,13 +127,24 @@ void __DriverTracePassing(const char* function_name,
          function_caller_name, num_of_params);
   for (i = 0; i < num_of_params; ++i) {
     char* type = va_arg(args, char*);
-    va_arg(args, int);
-    __DriverTraceRecordParameter(type, NULL);
+    if (strcmp(type, "i8") == 0 || strcmp(type, "i16") == 0 ||
+        strcmp(type, "i32") == 0) {
+      int value = va_arg(args, int);
+      printk(KERN_DEBUG, "%d;%s;%d", current->pid, type, value);
+    } else if (strcmp(type, "i64") == 0) {
+      long value = va_arg(args, long);
+      printk(KERN_DEBUG, "%d;%s;%ld", current->pid, type, value);
+    } else {
+      printk(KERN_DEBUG "%d;%s", current->pid, type);
+    }
   }
   va_end(args);
+  mutex_unlock(&__driver_trace_mutex);
+  local_bh_enable();   // enable soft IRQ
+  local_irq_enable();  // enable IRQ
 }
 EXPORT_SYMBOL(__DriverTracePassing);
 
 void __DriverTraceRecordParameter(const char* type, const void* value) {
-  printk(KERN_DEBUG "%d,%s", current->pid, type);
+  printk(KERN_DEBUG "%d;%s", current->pid, type);
 }
