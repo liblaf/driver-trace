@@ -32,8 +32,8 @@ bool Instrument(const std::filesystem::path& input,
            << "\n";
     return false;
   }
-  std::error_code err_code;
-  auto out = raw_fd_ostream(output.string(), err_code, sys::fs::OF_None);
+  std::error_code ec;
+  auto out = raw_fd_ostream(output.string(), ec, sys::fs::OF_None);
   owner->print(out, nullptr);
   owner->print(logging(), nullptr);
   logging().flush();
@@ -42,9 +42,6 @@ bool Instrument(const std::filesystem::path& input,
 
 void RunOnModule(llvm::Module& mod) {
   using namespace llvm;
-  InsertOnInitDeclaration(mod);
-  InsertOnCleanupDeclaration(mod);
-  InsertPassingDeclaration(mod);
   for (Function& func : mod) RunOnFunction(func);
 }
 
@@ -52,6 +49,7 @@ void RunOnFunction(llvm::Function& func) {
   using namespace llvm;
   if (func.isDeclaration()) return;
   if (func.getName().startswith("__DriverTrace")) return;
+  dbgs() << "Instrumenting Function " << func.getName() << "\n";
   for (BasicBlock& block : func) RunOnBasicBlock(block);
 }
 
@@ -67,7 +65,7 @@ void RunOnInstruction(llvm::Instruction& inst) {
   auto& call_inst = *dyn_cast<CallInst>(&inst);
   Function* called_func = call_inst.getCalledFunction();
   if (called_func->getName().startswith("__DriverTrace")) return;
-  if (called_func->getName().contains_insensitive('.')) return;
+  if (called_func->getName().contains('.')) return;
   auto builder = IRBuilder<>(&call_inst);
   Function* caller = call_inst.getFunction();
   Constant* caller_name = builder.CreateGlobalStringPtr(caller->getName());

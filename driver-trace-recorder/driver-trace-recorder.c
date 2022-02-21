@@ -130,10 +130,10 @@ void __DriverTracePassing(const char* function_name,
     if (strcmp(type, "i8") == 0 || strcmp(type, "i16") == 0 ||
         strcmp(type, "i32") == 0) {
       int value = va_arg(args, int);
-      printk(KERN_DEBUG, "%d;%s;%d", current->pid, type, value);
+      printk(KERN_DEBUG "%d;%s;%d", current->pid, type, value);
     } else if (strcmp(type, "i64") == 0) {
       long value = va_arg(args, long);
-      printk(KERN_DEBUG, "%d;%s;%ld", current->pid, type, value);
+      printk(KERN_DEBUG "%d;%s;%ld", current->pid, type, value);
     } else {
       printk(KERN_DEBUG "%d;%s", current->pid, type);
     }

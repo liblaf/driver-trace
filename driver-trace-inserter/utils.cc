@@ -23,7 +23,7 @@ int Execute(const std::vector<std::string>& args, bool use_vfork) {
   if (use_vfork) {
     std::string command;
     for (auto&& arg : args) command += arg + " ";
-    return_value = system(command.c_str());
+    return_value = system(command.c_str()) >> 8;
   } else {
     char** argv = new char*[args.size() + 1];
     for (int i = 0; i < args.size(); ++i)

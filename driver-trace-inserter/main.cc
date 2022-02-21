@@ -19,13 +19,14 @@
 #include "utils.h"
 
 #ifndef CC
-#define CC "clang-14"
+#define CC "clang-12"
 #endif
 
 int main(int argc, char** argv) {
   logging() << std::string(80, '-') << "\n";
   for (int i = 0; i < argc; ++i) logging() << argv[i] << " ";
   logging() << "\n";
+  logging().flush();
 
   std::vector<std::string> args;
   std::string output;
@@ -38,7 +39,16 @@ int main(int argc, char** argv) {
     args.push_back(argv[i]);
   }
 
-  if (std::any_of(args.begin(), args.end(), IsSourceFile)) {
+  // Execute(args, false);
+
+  if ((std::any_of(args.begin(), args.end(),
+                   [](const std::string& arg) {
+                     static const std::vector<std::string> kActions = {
+                         "-E",         "--preprocess",  "-S",
+                         "--assemble", "-fsyntax-only", "--precompile"};
+                     return Contains(kActions, arg);
+                   }) == false) &&
+      std::any_of(args.begin(), args.end(), IsSourceFile)) {
     args.push_back("--assemble");
     args.push_back("-emit-llvm");
     int ret = Execute(args);
@@ -46,24 +56,24 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 2; ++i) args.pop_back();
     for (int i = 0; i < args.size(); ++i) {
       auto ref = llvm::StringRef(args[i]);
-      if (ref.startswith("-Wp,")) {
-        args.erase(args.begin() + (i--));
-        continue;
-      }
-      if (args[i] == "-isystem" || args[i] == "-include") {
-        args.erase(args.begin() + i, args.begin() + i + 2);
-        --i;
-        continue;
-      }
-      if (ref.startswith("-fmacro-prefix-map=")) {
-        args.erase(args.begin() + (i--));
-        continue;
-      }
+      // if (ref.startswith("-Wp,")) {
+      //   args.erase(args.begin() + (i--));
+      //   continue;
+      // }
+      // if (args[i] == "-isystem" || args[i] == "-include") {
+      //   args.erase(args.begin() + i, args.begin() + i + 2);
+      //   --i;
+      //   continue;
+      // }
+      // if (ref.startswith("-fmacro-prefix-map=")) {
+      //   args.erase(args.begin() + (i--));
+      //   continue;
+      // }
       if (IsSourceFile(args[i])) {
         auto path = std::filesystem::path(args[i]);
         path = path.filename();
         path = path.replace_extension(".ll");
-        // Instrument(path, path);
+        Instrument(path, path);
         args[i] = path.string();
       }
     }
